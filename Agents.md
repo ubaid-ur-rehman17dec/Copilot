@@ -5,7 +5,7 @@
 
 * **Frontend:** Node.js 24, Next.js 16, React 19, TypeScript 7, shadcn/ui — `frontend/` — port `3000`
 * **Backend:** Python 3.13, FastAPI, uv, Ruff, pytest — `backend/` — port `8000`
-* **Local AI:** Ollama — `localhost:11434` — `gemma3:1b`
+* **Local AI:** Ollama — `localhost:11434` — `qwen3.5:4b`
 * **Cloud AI:** OpenAI, Anthropic, Grok, Meta, Gemini
 
 ## Commands
