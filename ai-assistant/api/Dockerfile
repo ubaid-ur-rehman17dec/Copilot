@@ -5,11 +5,12 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY app ./app
+COPY static ./static
 
 FROM python:3.13-slim-bookworm
 WORKDIR /app
 RUN useradd --create-home --uid 10001 appuser
-COPY --from=build /app /app
+COPY --from=build --chown=appuser:appuser /app /app
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 ENVIRONMENT=production
 USER appuser
 EXPOSE 8000

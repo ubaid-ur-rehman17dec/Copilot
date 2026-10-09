@@ -8,7 +8,11 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 UPLOAD_DIR = Path("static/uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+except Exception as e:
+    print(f"Warning: Could not create upload directory {UPLOAD_DIR}: {e}")
+
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
