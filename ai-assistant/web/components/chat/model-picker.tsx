@@ -35,9 +35,9 @@ export function ModelPicker({ models }: { models: UseModels }) {
 
   if (loading && !data) return <Skeleton className="h-9 w-40" />;
 
-  const local = data?.providers.find((p) => p.local);
-  const cloud = data?.providers.filter((p) => !p.local) ?? [];
-  const cloudReady = cloud.filter((p) => p.available && p.models.length);
+  const local = data?.providers?.find((p) => p.local === true);
+  const cloud = data?.providers?.filter((p) => p.local === false) ?? [];
+  const cloudReady = cloud.filter((p) => p.available && p.models.length > 0);
   const cloudFailed = cloud.filter((p) => p.configured && !p.available);
   const cloudMissing = cloud.filter((p) => !p.configured);
 

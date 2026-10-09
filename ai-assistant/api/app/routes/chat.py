@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from app.deps import ChatServiceDep, SettingsDep
-from app.schemas import ChatRequest
+from app.schemas import ChatRequest, ContentBlock
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -13,6 +13,12 @@ SSE_HEADERS = {
     "Connection": "keep-alive",
     "X-Accel-Buffering": "no",
 }
+
+
+def _get_char_count(content: str | list[ContentBlock]) -> int:
+    if isinstance(content, str):
+        return len(content)
+    return sum(len(b.text or "") for b in content if b.type == "text")
 
 
 @router.post(
@@ -30,7 +36,7 @@ async def chat(
     """
     if len(body.messages) > settings.max_messages:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Too many messages")
-    if any(len(m.content) > settings.max_message_chars for m in body.messages):
+    if any(_get_char_count(m.content) > settings.max_message_chars for m in body.messages):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Message is too long")
     if body.messages[-1].role != "user":
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Last message must be user")

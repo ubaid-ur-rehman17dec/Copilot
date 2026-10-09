@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CodeIcon, LightbulbIcon, MailIcon, ListChecksIcon } from "lucide-react";
+import { CodeIcon, LightbulbIcon, MailIcon, AudioWaveformIcon } from "lucide-react";
 
 import { APP_CONFIG, firstNameOf } from "@/lib/config";
 
@@ -25,10 +25,11 @@ const SUGGESTIONS = [
     prompt: "Explain how large language models work in simple terms.",
   },
   {
-    icon: ListChecksIcon,
-    title: "Plan a project",
-    sub: "Launch plan for a new SaaS feature",
-    prompt: "Create a launch plan for a new SaaS feature, with milestones and owners.",
+    icon: AudioWaveformIcon,
+    title: "Practise out loud",
+    sub: "Mock interview in voice mode",
+    prompt: "",
+    isVoiceMode: true,
   },
 ];
 
@@ -52,14 +53,26 @@ export function EmptyState() {
   );
 }
 
-export function SuggestionGrid({ onPick }: { onPick: (prompt: string) => void }) {
+export function SuggestionGrid({
+  onPick,
+  onStartVoiceMode,
+}: {
+  onPick: (prompt: string) => void;
+  onStartVoiceMode?: () => void;
+}) {
   return (
     <div className="mx-auto mt-4 grid w-full max-w-3xl grid-cols-1 gap-2.5 text-left sm:grid-cols-2">
-      {SUGGESTIONS.map(({ icon: Icon, title, sub, prompt }, i) => (
+      {SUGGESTIONS.map(({ icon: Icon, title, sub, prompt, isVoiceMode }, i) => (
         <button
           key={title}
           type="button"
-          onClick={() => onPick(prompt)}
+          onClick={() => {
+            if (isVoiceMode && onStartVoiceMode) {
+              onStartVoiceMode();
+            } else if (prompt) {
+              onPick(prompt);
+            }
+          }}
           className={
             "flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition-colors hover:bg-accent " +
             (i > 1 ? "hidden sm:flex" : "")

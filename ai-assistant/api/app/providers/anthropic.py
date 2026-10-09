@@ -5,10 +5,36 @@ from collections.abc import AsyncIterator
 import anthropic
 from anthropic import AsyncAnthropic
 
+from app.core.image_utils import get_image_b64
 from app.providers.base import Provider, ProviderError
 from app.schemas import ChatMessage, ModelInfo
 
 DEFAULT_MAX_TOKENS = 8192
+
+
+async def _build_anthropic_content(blocks_or_str: str | list) -> list[dict]:
+    """Convert message content into Anthropic's API block structure."""
+    if isinstance(blocks_or_str, str):
+        return [{"type": "text", "text": blocks_or_str}]
+
+    content = []
+    for block in blocks_or_str:
+        if block.type == "text":
+            content.append({"type": "text", "text": block.text or ""})
+        elif block.type == "image" and block.image_url:
+            image_data, mime_type = await get_image_b64(block.image_url, block.mime_type)
+            if image_data:
+                content.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime_type,
+                            "data": image_data,
+                        },
+                    }
+                )
+    return content
 
 
 class AnthropicProvider(Provider):
@@ -53,11 +79,21 @@ class AnthropicProvider(Provider):
         temperature: float | None = None,
     ) -> AsyncIterator[str]:
         client = self._require_client()
-        system = "\n\n".join(m.content for m in messages if m.role == "system")
-        turns = [{"role": m.role, "content": m.content} for m in messages if m.role != "system"]
+
+        system = ""
+        turns = []
+        for m in messages:
+            if m.role == "system":
+                content_str = m.content if isinstance(m.content, str) else ""
+                system += content_str + "\n\n"
+                continue
+
+            content = await _build_anthropic_content(m.content)
+            turns.append({"role": m.role, "content": content})
+
         kwargs: dict = {"model": model, "max_tokens": DEFAULT_MAX_TOKENS, "messages": turns}
         if system:
-            kwargs["system"] = system
+            kwargs["system"] = system.strip()
         if temperature is not None:
             kwargs["temperature"] = min(temperature, 1.0)
         try:

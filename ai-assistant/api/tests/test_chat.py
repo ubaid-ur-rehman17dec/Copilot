@@ -130,3 +130,27 @@ def test_validation(make_client):
         client.post("/api/chat", json={"messages": [{"role": "tool", "content": "x"}]}).status_code
         == 422
     )
+
+
+def test_multimodal_message_handling(make_client):
+    ollama = FakeProvider("ollama", local=True, models=["llava"], reply="I see an image")
+    client = make_client(ollama)
+    body = {
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "What is in this image?"},
+                    {
+                        "type": "image",
+                        "image_url": "/static/uploads/test.png",
+                        "mime_type": "image/png",
+                    },
+                ],
+            }
+        ]
+    }
+    res = client.post("/api/chat", json=body)
+    assert res.status_code == 200
+    events = parse_sse(res.text)
+    assert text_of(events) == "I see an image"

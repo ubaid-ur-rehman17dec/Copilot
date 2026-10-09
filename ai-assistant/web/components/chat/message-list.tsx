@@ -14,11 +14,19 @@ export function MessageList({
   streaming,
   onRegenerate,
   onFeedback,
+  onSpeak,
+  onStopSpeak,
+  speakingTextId,
+  voiceLabel,
 }: {
   conversation: Conversation;
   streaming: boolean;
   onRegenerate: (id: string) => void;
   onFeedback: (id: string, value: "up" | "down") => void;
+  onSpeak?: (text: string, messageId: string) => void;
+  onStopSpeak?: () => void;
+  speakingTextId?: string | null;
+  voiceLabel?: string;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -64,6 +72,10 @@ export function MessageList({
               isLast={i === conversation.messages.length - 1}
               onRegenerate={onRegenerate}
               onFeedback={onFeedback}
+              onSpeak={onSpeak}
+              onStopSpeak={onStopSpeak}
+              isSpeakingThis={speakingTextId === m.id}
+              voiceLabel={voiceLabel}
             />
           ))}
         </div>

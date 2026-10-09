@@ -8,12 +8,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.providers.registry import ProviderRegistry, build_providers
-from app.routes import chat, health, models
+from app.routes import chat, health, models, upload
 
 
 def create_app(
@@ -44,8 +45,9 @@ def create_app(
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
-    for router in (health.router, models.router, chat.router):
+    for router in (health.router, models.router, chat.router, upload.router):
         app.include_router(router, prefix="/api")
+    app.mount("/static", StaticFiles(directory="static"), name="static")
     return app
 
 

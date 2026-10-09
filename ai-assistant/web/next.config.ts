@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
-// Where the FastAPI server lives. Server-side only; the browser calls /api/* on
+// Where the FastAPI server lives. Server-side only; the browser calls /api/* and /static/* on
 // this app and Next.js forwards it, so there is no CORS setup to manage.
-const API_URL = process.env.API_URL ?? "http://localhost:8000";
+const API_URL = process.env.API_URL ?? "http://localhost:8001";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -11,7 +11,10 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   compress: false,
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${API_URL}/api/:path*` },
+      { source: "/static/:path*", destination: `${API_URL}/static/:path*` },
+    ];
   },
   async headers() {
     return [

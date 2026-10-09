@@ -93,6 +93,7 @@ class ProviderRegistry:
         try:
             status.models = await asyncio.wait_for(provider.list_models(), timeout=10)
             status.available = True
+            logger.info("Provider %s is available with %d models", provider.id, len(status.models))
         except (ProviderError, TimeoutError) as exc:
             status.error = str(exc) or "Timed out while listing models"
             logger.info("Provider %s unavailable: %s", provider.id, status.error)

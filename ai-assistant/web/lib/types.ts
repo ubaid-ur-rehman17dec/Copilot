@@ -38,15 +38,23 @@ export interface StreamMeta {
   notice: string | null;
 }
 
+export interface ContentBlock {
+  type: "text" | "image";
+  text?: string;
+  image_url?: string;
+  mime_type?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: Role;
-  content: string;
+  content: string | ContentBlock[];
   createdAt: number;
   meta?: StreamMeta;
   error?: string;
   pending?: boolean;
   feedback?: "up" | "down" | null;
+  isSpoken?: boolean;
 }
 
 export interface Conversation {

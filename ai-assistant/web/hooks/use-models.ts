@@ -20,9 +20,9 @@ export interface UseModels {
 }
 
 function findModel(data: ModelsResponse | null, sel: ModelSelection): ModelInfo | null {
-  if (!data || !sel) return null;
+  if (!data || !data.providers || !sel) return null;
   const provider = data.providers.find((p) => p.id === sel.provider);
-  return provider?.models.find((m) => m.id === sel.model) ?? null;
+  return provider?.models?.find((m) => m.id === sel.model) ?? null;
 }
 
 export function useModels(): UseModels {

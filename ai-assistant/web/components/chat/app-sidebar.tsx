@@ -77,7 +77,12 @@ export function AppSidebar({
         (c) =>
           !q ||
           c.title.toLowerCase().includes(q) ||
-          c.messages.some((m) => m.content.toLowerCase().includes(q)),
+          c.messages.some((m) => {
+            const text = typeof m.content === "string" 
+              ? m.content 
+              : m.content.map(b => b.text || "").join(" ");
+            return text.toLowerCase().includes(q);
+          }),
       )
       .sort((a, b) => b.updatedAt - a.updatedAt);
     return groupByDate(list);

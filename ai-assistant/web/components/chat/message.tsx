@@ -10,13 +10,22 @@ import {
   ThumbsDownIcon,
   ThumbsUpIcon,
   TriangleAlertIcon,
+  MicIcon,
+  Volume2Icon,
+  VolumeXIcon,
+  AudioWaveformIcon,
 } from "lucide-react";
 
 import { Markdown } from "@/components/chat/markdown";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatMessage, ContentBlock } from "@/lib/types";
+
+function extractText(content: string | ContentBlock[]): string {
+  if (typeof content === "string") return content;
+  return content.map((b) => (b.type === "text" ? b.text || "" : "")).filter(Boolean).join("\n");
+}
 
 function IconAction({
   label,
@@ -83,26 +92,61 @@ export function Message({
   isLast,
   onRegenerate,
   onFeedback,
+  onSpeak,
+  onStopSpeak,
+  isSpeakingThis,
+  voiceLabel,
 }: {
   message: ChatMessage;
   isLast: boolean;
   onRegenerate: (id: string) => void;
   onFeedback: (id: string, value: "up" | "down") => void;
+  onSpeak?: (text: string, messageId: string) => void;
+  onStopSpeak?: () => void;
+  isSpeakingThis?: boolean;
+  voiceLabel?: string;
 }) {
   if (message.role === "user") {
     return (
       <div className="group flex flex-col items-end gap-1">
         <div className="max-w-[85%] rounded-3xl bg-secondary px-4 py-2.5 text-[15px] leading-7 break-words whitespace-pre-wrap">
-          {message.content}
+          {typeof message.content === "string" ? (
+            message.content
+          ) : (
+            <div className="flex flex-col gap-2">
+              {message.content.map((block, i) => (
+                block.type === "text" ? (
+                  <span key={i}>{block.text}</span>
+                ) : (
+                  <img
+                    key={i}
+                    src={block.image_url}
+                    alt="Uploaded"
+                    className="max-w-full rounded-lg border bg-muted"
+                  />
+                )
+              ))}
+            </div>
+          )}
         </div>
-        <div className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
-          <CopyAction text={message.content} />
+        <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity text-xs text-muted-foreground pr-2">
+          {message.isSpoken && (
+            <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
+              <MicIcon className="size-3" />
+              Spoken
+            </span>
+          )}
+          <div className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+            <CopyAction text={typeof message.content === "string" ? message.content : ""} />
+          </div>
         </div>
       </div>
     );
   }
 
   const { meta } = message;
+  const messageText = typeof message.content === "string" ? message.content : extractText(message.content);
+
   return (
     <div className="group flex gap-4">
       <div className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg border bg-background">
@@ -120,10 +164,41 @@ export function Message({
         )}
 
         {message.content ? (
-          <Markdown content={message.content} />
+          <Markdown content={messageText} />
         ) : message.pending ? (
           <Typing />
         ) : null}
+
+        {/* Live Audio playback card when speaking during voice mode */}
+        {isSpeakingThis && (
+          <div className="mt-2.5 flex items-center gap-2.5 rounded-2xl border bg-muted/60 p-2.5 px-3.5 text-xs shadow-xs max-w-md animate-in fade-in slide-in-from-top-1">
+            <div className="flex size-7 items-center justify-center rounded-xl bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900">
+              <AudioWaveformIcon className="size-3.5 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 font-medium">
+                <span>Speaking</span>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground truncate">{voiceLabel || "Calm voice"}</span>
+                {meta?.model && (
+                  <>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-muted-foreground truncate">{meta.model}</span>
+                  </>
+                )}
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={onStopSpeak}
+              className="rounded-full text-muted-foreground hover:text-foreground"
+            >
+              <VolumeXIcon className="size-4" />
+            </Button>
+          </div>
+        )}
 
         {message.error && (
           <div className="mt-2 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -139,10 +214,25 @@ export function Message({
           <div
             className={cn(
               "mt-1.5 flex items-center gap-0.5 transition-opacity [@media(hover:none)]:opacity-100",
-              isLast ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+              isLast || isSpeakingThis ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
             )}
           >
-            <CopyAction text={message.content} />
+            <CopyAction text={messageText} />
+            {onSpeak && (
+              <IconAction
+                label={isSpeakingThis ? "Stop speaking" : "Read aloud (Text to Speech)"}
+                active={isSpeakingThis}
+                onClick={() => {
+                  if (isSpeakingThis) {
+                    onStopSpeak?.();
+                  } else {
+                    onSpeak(messageText, message.id);
+                  }
+                }}
+              >
+                {isSpeakingThis ? <VolumeXIcon className="size-3.5 text-primary" /> : <Volume2Icon className="size-3.5" />}
+              </IconAction>
+            )}
             <IconAction
               label="Good response"
               active={message.feedback === "up"}

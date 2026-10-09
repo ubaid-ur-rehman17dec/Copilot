@@ -1,4 +1,4 @@
-import type { ModelSelection, ModelsResponse, Role, StreamMeta } from "@/lib/types";
+import type { ContentBlock, ModelSelection, ModelsResponse, Role, StreamMeta } from "@/lib/types";
 
 /**
  * Requests go to `/api/*` on the same origin; `next.config.ts` rewrites them to
@@ -45,8 +45,27 @@ export async function fetchModels(refresh = false, signal?: AbortSignal): Promis
   return (await res.json()) as ModelsResponse;
 }
 
+export async function uploadImage(file: File): Promise<{ url: string; mime_type: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/upload`, {
+      method: "POST",
+      body: formData,
+    });
+  } catch (err) {
+    if ((err as Error).name === "AbortError") throw err;
+    throw new ApiError("Failed to upload image. Server connection error.");
+  }
+
+  if (!res.ok) throw new ApiError(await errorMessage(res), res.status);
+  return (await res.json()) as { url: string; mime_type: string };
+}
+
 export interface StreamChatOptions {
-  messages: { role: Role; content: string }[];
+  messages: { role: Role; content: string | ContentBlock[] }[];
   selection: ModelSelection;
   signal: AbortSignal;
   onMeta: (meta: StreamMeta) => void;

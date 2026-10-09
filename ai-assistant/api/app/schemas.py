@@ -7,9 +7,16 @@ from pydantic import BaseModel, Field
 Role = Literal["system", "user", "assistant"]
 
 
+class ContentBlock(BaseModel):
+    type: Literal["text", "image"]
+    text: str | None = None
+    image_url: str | None = None
+    mime_type: str | None = None
+
+
 class ChatMessage(BaseModel):
     role: Role
-    content: str = Field(max_length=200_000)
+    content: str | list[ContentBlock] = Field(max_length=200_000)
 
 
 class ChatRequest(BaseModel):

@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator, Callable
 import openai
 from openai import AsyncOpenAI
 
+from app.core.image_utils import get_image_data_url
 from app.providers.base import Provider, ProviderError
 from app.schemas import ChatMessage, ModelInfo
 
@@ -96,13 +97,30 @@ class OpenAICompatibleProvider(Provider):
         temperature: float | None = None,
     ) -> AsyncIterator[str]:
         client = self._require_client()
+
+        # Map internal multimodal messages to OpenAI format
+        openai_messages = []
+        for m in messages:
+            if isinstance(m.content, str):
+                openai_messages.append({"role": m.role, "content": m.content})
+            elif isinstance(m.content, list):
+                content = []
+                for block in m.content:
+                    if block.type == "text":
+                        content.append({"type": "text", "text": block.text or ""})
+                    elif block.type == "image" and block.image_url:
+                        data_url = await get_image_data_url(block.image_url, block.mime_type)
+                        content.append({"type": "image_url", "image_url": {"url": data_url}})
+
+                openai_messages.append({"role": m.role, "content": content})
+
         kwargs: dict = {}
         if temperature is not None:
             kwargs["temperature"] = temperature
         try:
             stream = await client.chat.completions.create(
                 model=model,
-                messages=[m.model_dump() for m in messages],
+                messages=openai_messages,
                 stream=True,
                 **kwargs,
             )

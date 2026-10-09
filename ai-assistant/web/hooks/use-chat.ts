@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { streamChat } from "@/lib/api";
 import { makeTitle, readStorage, uid, writeStorage } from "@/lib/helpers";
-import type { ChatMessage, Conversation, ModelSelection } from "@/lib/types";
+import type { ChatMessage, ContentBlock, Conversation, ModelSelection } from "@/lib/types";
 
 const KEY = "assistant.conversations.v1";
 const MAX_SAVED = 200;
@@ -118,10 +118,22 @@ export function useChat(selection: ModelSelection, onFinish?: () => void) {
   );
 
   const send = useCallback(
-    (text: string) => {
-      const content = text.trim();
-      if (!content || controller.current) return;
-      const userMsg: ChatMessage = { id: uid(), role: "user", content, createdAt: Date.now() };
+    async (text: string, attachments: ContentBlock[] = [], options?: { isSpoken?: boolean }) => {
+      const contentText = text.trim();
+      if ((!contentText && attachments.length === 0) || controller.current) return;
+
+      const content: ChatMessage["content"] =
+        attachments.length > 0
+          ? [{ type: "text", text: contentText }, ...attachments]
+          : contentText;
+
+      const userMsg: ChatMessage = {
+        id: uid(),
+        role: "user",
+        content,
+        createdAt: Date.now(),
+        isSpoken: options?.isSpoken,
+      };
       const existing = conversations.find((c) => c.id === activeId);
       if (existing) {
         void generate(existing.id, [...existing.messages.filter((m) => !m.error), userMsg]);
@@ -129,7 +141,7 @@ export function useChat(selection: ModelSelection, onFinish?: () => void) {
       }
       const conv: Conversation = {
         id: uid(),
-        title: makeTitle(content),
+        title: makeTitle(contentText || "Image Upload"),
         messages: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),

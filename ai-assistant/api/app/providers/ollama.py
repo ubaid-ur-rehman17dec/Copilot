@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 import httpx
 from ollama import AsyncClient, ResponseError
 
+from app.core.image_utils import get_image_b64
 from app.providers.base import Provider, ProviderError
 from app.schemas import ChatMessage, ModelInfo
 
@@ -33,11 +34,12 @@ class OllamaProvider(Provider):
         for item in response.models:
             if not item.model:
                 continue
+
             details = item.details
-            # Embedding-only models cannot chat, so keep them out of the dropdown.
-            families = (details.families or []) if details else []
+            families = (details.families or []) if (details and details.families) else []
             if any("bert" in f for f in families) or "embed" in item.model:
                 continue
+
             models.append(
                 ModelInfo(
                     id=item.model,
@@ -45,8 +47,8 @@ class OllamaProvider(Provider):
                     provider=self.id,
                     local=True,
                     size_bytes=item.size,
-                    parameter_size=details.parameter_size if details else None,
-                    family=details.family if details else None,
+                    parameter_size=item.details.parameter_size if item.details else None,
+                    family=item.details.family if item.details else None,
                 )
             )
         return sorted(models, key=lambda m: m.name)
@@ -58,10 +60,31 @@ class OllamaProvider(Provider):
         temperature: float | None = None,
     ) -> AsyncIterator[str]:
         options = {"temperature": temperature} if temperature is not None else None
+
+        formatted_messages = []
+        for m in messages:
+            if isinstance(m.content, str):
+                formatted_messages.append({"role": m.role, "content": m.content})
+            elif isinstance(m.content, list):
+                text_parts = []
+                images = []
+                for block in m.content:
+                    if block.type == "text" and block.text:
+                        text_parts.append(block.text)
+                    elif block.type == "image" and block.image_url:
+                        b64_str, _ = await get_image_b64(block.image_url, block.mime_type)
+                        if b64_str:
+                            images.append(b64_str)
+
+                msg_dict: dict = {"role": m.role, "content": "\n".join(text_parts)}
+                if images:
+                    msg_dict["images"] = images
+                formatted_messages.append(msg_dict)
+
         try:
             stream = await self._client.chat(
                 model=model,
-                messages=[m.model_dump() for m in messages],
+                messages=formatted_messages,
                 stream=True,
                 options=options,
             )
